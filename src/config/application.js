@@ -72,6 +72,12 @@ const appConfig = {
 
   shop,
 
+  kofi: {
+    verificationToken: process.env.KOFI_VERIFICATION_TOKEN || null,
+    pageUrl: process.env.KOFI_PAGE_URL || null,
+    claimExpiryMinutes: Number(process.env.VIP_CLAIM_EXPIRY_MINUTES || 60),
+  },
+
   features: {
     ...botConfig.features,
     music: botConfig.features?.music ?? true,

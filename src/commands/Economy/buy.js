@@ -5,6 +5,7 @@ import { getEconomyData, setEconomyData } from '../../utils/economy.js';
 import { getGuildConfig } from '../../services/config/guildConfig.js';
 import { withErrorHandling, createError, ErrorTypes } from '../../utils/errorHandler.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
+import { createVipClaim } from '../../services/vipService.js';
 
 const SHOP_ITEMS = shopItems;
 
@@ -54,6 +55,49 @@ export default {
                     "You must purchase a quantity of 1 or more.",
                     { quantity }
                 );
+            }
+
+            if (item.type === "real_money") {
+                const kofiConfig = config?.kofi || {};
+                if (!kofiConfig.pageUrl) {
+                    throw createError(
+                        "Ko-fi not configured",
+                        ErrorTypes.CONFIGURATION,
+                        "VIP purchases are not available yet; the server owner hasn't configured Ko-fi.",
+                        { itemId }
+                    );
+                }
+
+                const guildConfig = await getGuildConfig(client, guildId);
+                if (!guildConfig.vipRoleId) {
+                    throw createError(
+                        "VIP role not configured",
+                        ErrorTypes.CONFIGURATION,
+                        "The **VIP role** has not been configured by a server administrator yet.",
+                        { itemId }
+                    );
+                }
+
+                const { code, expiresInMinutes } = await createVipClaim(client, {
+                    guildId,
+                    userId,
+                    itemId: item.id,
+                    amount: item.price,
+                    currency: item.currency || "USD",
+                });
+
+                const embed = infoEmbed(
+                    "⭐ Complete Your VIP Purchase",
+                    `You're purchasing **${item.name}** (**$${item.price} ${item.currency || "USD"}**) via Ko-fi.\n\n` +
+                    `1. Go to ${kofiConfig.pageUrl}\n` +
+                    `2. Donate **at least $${item.price}**\n` +
+                    `3. In the message field, paste this claim code exactly:\n\n` +
+                    `\`\`\`${code}\`\`\`\n` +
+                    `Your VIP role will be granted automatically once the payment is confirmed. This code expires in **${expiresInMinutes} minutes**.`
+                );
+
+                await InteractionHelper.safeEditReply(interaction, { embeds: [embed], flags: [MessageFlags.Ephemeral] });
+                return;
             }
 
             const totalCost = item.price * quantity;
