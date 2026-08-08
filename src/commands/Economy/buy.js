@@ -6,6 +6,7 @@ import { getGuildConfig } from '../../services/config/guildConfig.js';
 import { withErrorHandling, createError, ErrorTypes } from '../../utils/errorHandler.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 import { createVipClaim } from '../../services/vipService.js';
+import { logger } from '../../utils/logger.js';
 
 const SHOP_ITEMS = shopItems;
 
@@ -69,6 +70,7 @@ export default {
                 }
 
                 const guildConfig = await getGuildConfig(client, guildId);
+                logger.info(`[DEBUG supporter] guildId=${guildId} supporterRoleId=${guildConfig.supporterRoleId} premiumRoleId=${guildConfig.premiumRoleId}`);
                 if (!guildConfig.supporterRoleId) {
                     throw createError(
                         "Server Supporter role not configured",
