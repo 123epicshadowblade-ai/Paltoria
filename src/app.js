@@ -17,6 +17,8 @@ import { initializeMusic } from './services/music/riffySetup.js';
 import { shutdownMusic } from './services/music/playerHandler.js';
 import pkg from '../package.json' with { type: 'json' };
 import { EXPECTED_SCHEMA_VERSION, EXPECTED_SCHEMA_LABEL } from './config/database/schemaVersion.js';
+import { fulfillKofiPayment } from './services/vipService.js';
+import crypto from 'crypto';
 
 class TitanBot extends Client {
   constructor() {
@@ -203,11 +205,47 @@ class TitanBot extends Client {
     });
 
     app.get('/', (req, res) => {
-      res.status(200).json({ 
+      res.status(200).json({
         message: 'TitanBot System Online',
         version: pkg.version,
         timestamp: new Date().toISOString()
       });
+    });
+
+    app.post('/webhooks/kofi', express.urlencoded({ extended: false }), async (req, res) => {
+      const expectedToken = this.config?.kofi?.verificationToken;
+      if (!expectedToken) {
+        logger.error('Ko-fi webhook received but KOFI_VERIFICATION_TOKEN is not configured.');
+        return res.sendStatus(503);
+      }
+
+      let payload;
+      try {
+        payload = JSON.parse(req.body?.data || '{}');
+      } catch {
+        return res.status(400).json({ error: 'Invalid payload' });
+      }
+
+      const providedToken = Buffer.from(String(payload.verification_token || ''));
+      const expected = Buffer.from(String(expectedToken));
+      const tokenMatches = providedToken.length === expected.length
+        && crypto.timingSafeEqual(providedToken, expected);
+
+      if (!tokenMatches) {
+        logger.warn('Ko-fi webhook received with an invalid verification token.');
+        return res.sendStatus(401);
+      }
+
+      try {
+        const result = await fulfillKofiPayment(this, payload);
+        logger.info(`Ko-fi webhook processed (transaction ${payload.kofi_transaction_id}): ${result.status}`);
+      } catch (error) {
+        logger.error('Error handling Ko-fi webhook:', error);
+      }
+
+      // Always 200 once the token is verified, so Ko-fi does not endlessly retry
+      // payments that failed to match a claim (those are logged for manual review).
+      res.sendStatus(200);
     });
 
     const startServer = (port, attempt = 0) => {

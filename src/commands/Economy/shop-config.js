@@ -1,5 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
 import shopConfigSetrole from './modules/shop_config_setrole.js';
+import shopConfigSetviprole from './modules/shop_config_setviprole.js';
 
 export default {
     slashOnly: true,
@@ -16,6 +17,17 @@ export default {
                         .setDescription('The role to grant for Premium Role purchases.')
                         .setRequired(true),
                 ),
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('setviprole')
+                .setDescription('Set the Discord role granted after a Ko-fi VIP purchase is confirmed.')
+                .addRoleOption(option =>
+                    option
+                        .setName('role')
+                        .setDescription('The role to grant for VIP purchases.')
+                        .setRequired(true),
+                ),
         ),
 
     async execute(interaction, config, client) {
@@ -23,6 +35,9 @@ export default {
 
         if (subcommand === 'setrole') {
             return shopConfigSetrole.execute(interaction, config, client);
+        }
+        if (subcommand === 'setviprole') {
+            return shopConfigSetviprole.execute(interaction, config, client);
         }
     },
 };

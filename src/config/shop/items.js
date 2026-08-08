@@ -134,6 +134,38 @@ roleId: null,
             type: 'robbery_protection',
             protection: true
         }
+    },
+    {
+        id: 'vip_5',
+        name: '⭐ VIP - $5 Tier',
+        price: 5,
+        description: 'Real-money purchase via Ko-fi (not in-game cash). Grants the permanent VIP role.',
+        type: 'real_money',
+        currency: 'USD'
+    },
+    {
+        id: 'vip_10',
+        name: '⭐ VIP - $10 Tier',
+        price: 10,
+        description: 'Real-money purchase via Ko-fi (not in-game cash). Grants the permanent VIP role.',
+        type: 'real_money',
+        currency: 'USD'
+    },
+    {
+        id: 'vip_15',
+        name: '⭐ VIP - $15 Tier',
+        price: 15,
+        description: 'Real-money purchase via Ko-fi (not in-game cash). Grants the permanent VIP role.',
+        type: 'real_money',
+        currency: 'USD'
+    },
+    {
+        id: 'vip_20',
+        name: '⭐ VIP - $20 Tier',
+        price: 20,
+        description: 'Real-money purchase via Ko-fi (not in-game cash). Grants the permanent VIP role.',
+        type: 'real_money',
+        currency: 'USD'
     }
 ];
 
