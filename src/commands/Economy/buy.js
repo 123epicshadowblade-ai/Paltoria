@@ -58,7 +58,7 @@ export default {
             }
 
             if (item.type === "real_money") {
-                const kofiConfig = config?.kofi || {};
+                const kofiConfig = client.config?.kofi || {};
                 if (!kofiConfig.pageUrl) {
                     throw createError(
                         "Ko-fi not configured",
