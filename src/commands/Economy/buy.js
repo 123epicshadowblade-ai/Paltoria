@@ -63,17 +63,17 @@ export default {
                     throw createError(
                         "Ko-fi not configured",
                         ErrorTypes.CONFIGURATION,
-                        "VIP purchases are not available yet; the server owner hasn't configured Ko-fi.",
+                        "Server Supporter purchases are not available yet; the server owner hasn't configured Ko-fi.",
                         { itemId }
                     );
                 }
 
                 const guildConfig = await getGuildConfig(client, guildId);
-                if (!guildConfig.vipRoleId) {
+                if (!guildConfig.supporterRoleId) {
                     throw createError(
-                        "VIP role not configured",
+                        "Server Supporter role not configured",
                         ErrorTypes.CONFIGURATION,
-                        "The **VIP role** has not been configured by a server administrator yet.",
+                        "The **Server Supporter role** has not been configured by a server administrator yet.",
                         { itemId }
                     );
                 }
@@ -87,13 +87,13 @@ export default {
                 });
 
                 const embed = infoEmbed(
-                    "⭐ Complete Your VIP Purchase",
+                    "⭐ Complete Your Server Supporter Purchase",
                     `You're purchasing **${item.name}** (**$${item.price} ${item.currency || "USD"}**) via Ko-fi.\n\n` +
                     `1. Go to ${kofiConfig.pageUrl}\n` +
                     `2. Donate **at least $${item.price}**\n` +
                     `3. In the message field, paste this claim code exactly:\n\n` +
                     `\`\`\`${code}\`\`\`\n` +
-                    `Your VIP role will be granted automatically once the payment is confirmed. This code expires in **${expiresInMinutes} minutes**.`
+                    `Your Server Supporter role will be granted automatically once the payment is confirmed. This code expires in **${expiresInMinutes} minutes**.`
                 );
 
                 await InteractionHelper.safeEditReply(interaction, { embeds: [embed], flags: [MessageFlags.Ephemeral] });

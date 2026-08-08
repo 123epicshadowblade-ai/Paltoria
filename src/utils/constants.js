@@ -26,7 +26,7 @@ export const DEFAULT_GUILD_CONFIG = {
     enabledCommands: {},
     birthdayChannelId: null,
     premiumRoleId: null,
-    vipRoleId: null,
+    supporterRoleId: null,
     modRole: null,
     adminRole: null,
     welcomeChannel: null,

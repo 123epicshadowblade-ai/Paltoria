@@ -51,7 +51,7 @@ function extractClaimCode(message) {
 
 /**
  * Processes a verified Ko-fi webhook payload: matches it to a pending claim,
- * grants the configured VIP role, and records the transaction so retries
+ * grants the configured Server Supporter role, and records the transaction so retries
  * (Ko-fi resends on non-200 responses) cannot grant the role twice.
  */
 export async function fulfillKofiPayment(client, payload) {
@@ -68,7 +68,7 @@ export async function fulfillKofiPayment(client, payload) {
 
     const code = extractClaimCode(payload.message);
     if (!code) {
-        logger.warn(`Ko-fi payment ${transactionId} had no recognizable VIP claim code in its message.`);
+        logger.warn(`Ko-fi payment ${transactionId} had no recognizable Server Supporter claim code in its message.`);
         return { status: 'unmatched', reason: 'No claim code found in message' };
     }
 
@@ -92,28 +92,28 @@ export async function fulfillKofiPayment(client, payload) {
     }
 
     const guildConfig = await getGuildConfig(client, claim.guildId);
-    const vipRoleId = guildConfig.vipRoleId;
-    if (!vipRoleId) {
-        logger.error(`Ko-fi payment ${transactionId}: no vipRoleId configured for guild ${claim.guildId}.`);
-        return { status: 'error', reason: 'VIP role not configured', claim };
+    const supporterRoleId = guildConfig.supporterRoleId;
+    if (!supporterRoleId) {
+        logger.error(`Ko-fi payment ${transactionId}: no supporterRoleId configured for guild ${claim.guildId}.`);
+        return { status: 'error', reason: 'Server Supporter role not configured', claim };
     }
 
     try {
         const member = await guild.members.fetch(claim.userId);
-        await member.roles.add(vipRoleId, `Ko-fi VIP purchase (transaction ${transactionId})`);
+        await member.roles.add(supporterRoleId, `Ko-fi Server Supporter purchase (transaction ${transactionId})`);
 
         await client.db.set(txnKey, { code, guildId: claim.guildId, userId: claim.userId, itemId: claim.itemId }, null);
         await client.db.delete(claimKey);
 
         try {
-            await member.send(`Thanks for your support! Your VIP role in **${guild.name}** has been granted.`);
+            await member.send(`Thanks for your support! Your Server Supporter role in **${guild.name}** has been granted.`);
         } catch {
             // DMs closed; not a failure of the purchase itself.
         }
 
-        return { status: 'fulfilled', guildId: claim.guildId, userId: claim.userId, roleId: vipRoleId };
+        return { status: 'fulfilled', guildId: claim.guildId, userId: claim.userId, roleId: supporterRoleId };
     } catch (error) {
-        logger.error(`Ko-fi payment ${transactionId}: failed to grant VIP role for claim ${code}:`, error);
+        logger.error(`Ko-fi payment ${transactionId}: failed to grant Server Supporter role for claim ${code}:`, error);
         return { status: 'error', reason: error.message, claim };
     }
 }
