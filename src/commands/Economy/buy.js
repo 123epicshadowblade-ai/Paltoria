@@ -70,7 +70,7 @@ export default {
                 }
 
                 const guildConfig = await getGuildConfig(client, guildId);
-                logger.info(`[DEBUG supporter] guildId=${guildId} supporterRoleId=${guildConfig.supporterRoleId} premiumRoleId=${guildConfig.premiumRoleId}`);
+                logger.warn(`[DEBUG supporter] guildId=${guildId} supporterRoleId=${guildConfig.supporterRoleId} premiumRoleId=${guildConfig.premiumRoleId}`);
                 if (!guildConfig.supporterRoleId) {
                     throw createError(
                         "Server Supporter role not configured",
