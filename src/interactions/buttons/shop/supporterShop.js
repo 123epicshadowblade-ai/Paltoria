@@ -1,5 +1,5 @@
 import { MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
-import { startSupporterPurchase, getLinkedSteamId } from '../../../services/vipService.js';
+import { startSupporterPurchase, getLinkedAccount } from '../../../services/vipService.js';
 import { InteractionHelper } from '../../../utils/interactionHelper.js';
 import { handleInteractionError } from '../../../utils/errorHandler.js';
 
@@ -11,11 +11,11 @@ const supporterBuyHandler = {
             const guildId = interaction.guildId;
             const userId = interaction.user.id;
 
-            const linkedSteamId = await getLinkedSteamId(client, guildId, userId);
-            if (!linkedSteamId) {
+            const linkedAccount = await getLinkedAccount(client, guildId, userId);
+            if (!linkedAccount) {
                 const modal = new ModalBuilder()
-                    .setCustomId(`supporter_link_steam:${itemId}`)
-                    .setTitle('Link Your SteamID64');
+                    .setCustomId(`supporter_link_account:${itemId}`)
+                    .setTitle('Link Your Account');
 
                 const steamIdInput = new TextInputBuilder()
                     .setCustomId('steam_id')
@@ -26,7 +26,18 @@ const supporterBuyHandler = {
                     .setMinLength(17)
                     .setMaxLength(17);
 
-                modal.addComponents(new ActionRowBuilder().addComponents(steamIdInput));
+                const emailInput = new TextInputBuilder()
+                    .setCustomId('email')
+                    .setLabel('Email you\'ll pay with on Ko-fi')
+                    .setPlaceholder('you@example.com')
+                    .setRequired(true)
+                    .setStyle(TextInputStyle.Short)
+                    .setMaxLength(100);
+
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(steamIdInput),
+                    new ActionRowBuilder().addComponents(emailInput),
+                );
                 await interaction.showModal(modal);
                 return;
             }
@@ -34,7 +45,7 @@ const supporterBuyHandler = {
             const deferred = await InteractionHelper.safeDefer(interaction, { flags: MessageFlags.Ephemeral });
             if (!deferred) return;
 
-            const embed = await startSupporterPurchase(client, { itemId, guildId, userId, steamId: linkedSteamId });
+            const embed = await startSupporterPurchase(client, { itemId, guildId, userId, account: linkedAccount });
             await InteractionHelper.safeEditReply(interaction, { embeds: [embed] });
         } catch (error) {
             await handleInteractionError(interaction, error, { type: 'button', customId: interaction.customId });

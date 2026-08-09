@@ -1,10 +1,10 @@
 import { MessageFlags } from 'discord.js';
-import { linkSteamId, startSupporterPurchase } from '../../../services/vipService.js';
+import { linkAccount, startSupporterPurchase } from '../../../services/vipService.js';
 import { InteractionHelper } from '../../../utils/interactionHelper.js';
 import { handleInteractionError } from '../../../utils/errorHandler.js';
 
-const supporterLinkSteamHandler = {
-    name: 'supporter_link_steam',
+const supporterLinkAccountHandler = {
+    name: 'supporter_link_account',
     async execute(interaction, client, args) {
         try {
             const deferred = await InteractionHelper.safeDefer(interaction, { flags: MessageFlags.Ephemeral });
@@ -13,10 +13,11 @@ const supporterLinkSteamHandler = {
             const itemId = args[0];
             const guildId = interaction.guildId;
             const userId = interaction.user.id;
-            const steamIdInput = interaction.fields.getTextInputValue('steam_id').trim();
+            const steamId = interaction.fields.getTextInputValue('steam_id').trim();
+            const email = interaction.fields.getTextInputValue('email').trim();
 
-            const steamId = await linkSteamId(client, guildId, userId, steamIdInput);
-            const embed = await startSupporterPurchase(client, { itemId, guildId, userId, steamId });
+            const account = await linkAccount(client, guildId, userId, { steamId, email });
+            const embed = await startSupporterPurchase(client, { itemId, guildId, userId, account });
             await InteractionHelper.safeEditReply(interaction, { embeds: [embed] });
         } catch (error) {
             await handleInteractionError(interaction, error, { type: 'modal', customId: interaction.customId });
@@ -24,4 +25,4 @@ const supporterLinkSteamHandler = {
     },
 };
 
-export default [supporterLinkSteamHandler];
+export default [supporterLinkAccountHandler];

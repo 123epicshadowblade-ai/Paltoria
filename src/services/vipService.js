@@ -8,6 +8,7 @@ import { getItemById } from '../config/shop/items.js';
 const CLAIM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CLAIM_CODE_LENGTH = 8;
 const STEAMID64_PATTERN = /^7656119\d{10}$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function generateClaimCode() {
     const bytes = crypto.randomBytes(CLAIM_CODE_LENGTH);
@@ -22,11 +23,15 @@ export function isValidSteamId64(steamId) {
     return typeof steamId === 'string' && STEAMID64_PATTERN.test(steamId);
 }
 
-export async function getLinkedSteamId(client, guildId, userId) {
-    return client.db.get(`steam:link:${guildId}:${userId}`, null);
+export function isValidEmail(email) {
+    return typeof email === 'string' && EMAIL_PATTERN.test(email);
 }
 
-export async function linkSteamId(client, guildId, userId, steamId) {
+export async function getLinkedAccount(client, guildId, userId) {
+    return client.db.get(`account:link:${guildId}:${userId}`, null);
+}
+
+export async function linkAccount(client, guildId, userId, { steamId, email }) {
     if (!isValidSteamId64(steamId)) {
         throw createError(
             'Invalid SteamID64',
@@ -35,11 +40,22 @@ export async function linkSteamId(client, guildId, userId, steamId) {
             { steamId },
         );
     }
-    await client.db.set(`steam:link:${guildId}:${userId}`, steamId, null);
-    return steamId;
+    if (!isValidEmail(email)) {
+        throw createError(
+            'Invalid email',
+            ErrorTypes.VALIDATION,
+            "That doesn't look like a valid email address. Use the same email you'll pay with on Ko-fi so your purchase is matched automatically.",
+            { email },
+        );
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const account = { steamId, email: normalizedEmail };
+    await client.db.set(`account:link:${guildId}:${userId}`, account, null);
+    return account;
 }
 
-export async function createVipClaim(client, { guildId, userId, itemId, amount, currency, steamId }) {
+export async function createVipClaim(client, { guildId, userId, itemId, amount, currency, steamId, email }) {
     if (!client.db || typeof client.db.set !== 'function') {
         throw new Error('Database unavailable');
     }
@@ -61,7 +77,16 @@ export async function createVipClaim(client, { guildId, userId, itemId, amount, 
 
     await client.db.set(
         `temp:vip:claim:${code}`,
-        { guildId, userId, itemId, amount, currency, steamId: steamId || null, createdAt: Date.now() },
+        {
+            guildId,
+            userId,
+            itemId,
+            amount,
+            currency,
+            steamId: steamId || null,
+            email: email ? email.trim().toLowerCase() : null,
+            createdAt: Date.now(),
+        },
         claimExpiryMinutes * 60,
     );
 
@@ -71,9 +96,10 @@ export async function createVipClaim(client, { guildId, userId, itemId, amount, 
 /**
  * Shared by /buy and the shop buttons: validates config, creates a claim,
  * and returns the embed instructing the buyer how to complete payment.
- * Requires a linked SteamID64 so the payment can also queue a Palworld reward.
+ * Requires a linked account (SteamID64 + email) so payment can be matched
+ * automatically by email, and so the reward can queue a Palworld delivery.
  */
-export async function startSupporterPurchase(client, { itemId, guildId, userId, steamId }) {
+export async function startSupporterPurchase(client, { itemId, guildId, userId, account }) {
     const item = getItemById(itemId);
     if (!item || item.type !== 'real_money') {
         throw createError(
@@ -104,12 +130,12 @@ export async function startSupporterPurchase(client, { itemId, guildId, userId, 
         );
     }
 
-    const linkedSteamId = steamId || await getLinkedSteamId(client, guildId, userId);
-    if (!linkedSteamId) {
+    const linkedAccount = account || await getLinkedAccount(client, guildId, userId);
+    if (!linkedAccount) {
         throw createError(
-            'SteamID not linked',
+            'Account not linked',
             ErrorTypes.VALIDATION,
-            'Link your SteamID64 first so we know where to send your in-game reward.',
+            'Link your SteamID64 and email first so your purchase can be matched automatically.',
             { itemId },
         );
     }
@@ -120,17 +146,18 @@ export async function startSupporterPurchase(client, { itemId, guildId, userId, 
         itemId: item.id,
         amount: item.price,
         currency: item.currency || 'USD',
-        steamId: linkedSteamId,
+        steamId: linkedAccount.steamId,
+        email: linkedAccount.email,
     });
 
     return infoEmbed(
         '⭐ Complete Your Server Supporter Purchase',
         `You're purchasing **${item.name}** (**$${item.price} ${item.currency || 'USD'}**) via Ko-fi.\n\n` +
         `1. Go to ${kofiConfig.pageUrl}\n` +
-        `2. Donate **at least $${item.price}**\n` +
-        `3. In the message field, paste this claim code exactly:\n\n` +
-        `\`\`\`${code}\`\`\`\n` +
-        `Your Server Supporter role and Palworld reward (SteamID \`${linkedSteamId}\`) will be granted automatically once the payment is confirmed. This code expires in **${expiresInMinutes} minutes**.`,
+        `2. Pay with **${linkedAccount.email}** — **at least $${item.price}**\n\n` +
+        `That's it. Your Server Supporter role and Palworld reward (SteamID \`${linkedAccount.steamId}\`) are granted automatically once the payment lands, matched by that email — no code needed.\n\n` +
+        `If you have to pay with a *different* email than the one you linked, paste this backup code in the Ko-fi message field instead:\n\`\`\`${code}\`\`\`\n` +
+        `(Backup code expires in **${expiresInMinutes} minutes**; the email match doesn't expire.)`,
     );
 }
 
@@ -177,8 +204,22 @@ export async function ackPalworldRewards(client, ids) {
     return queue.length - remaining.length;
 }
 
+async function findClaimByEmail(client, email) {
+    if (!email) return null;
+    const normalizedEmail = email.trim().toLowerCase();
+    const keys = await client.db.list('temp:vip:claim:');
+    for (const key of keys) {
+        const claim = await client.db.get(key, null);
+        if (claim && claim.email === normalizedEmail) {
+            return { key, claim };
+        }
+    }
+    return null;
+}
+
 /**
- * Processes a verified Ko-fi webhook payload: matches it to a pending claim,
+ * Processes a verified Ko-fi webhook payload: matches it to a pending claim
+ * (by payer email first, falling back to a claim code in the message),
  * grants the configured Server Supporter role, queues the Palworld in-game
  * reward, and records the transaction so retries (Ko-fi resends on non-200
  * responses) cannot grant the role or reward twice.
@@ -195,28 +236,38 @@ export async function fulfillKofiPayment(client, payload) {
         return { status: 'duplicate', ...alreadyProcessed };
     }
 
-    const code = extractClaimCode(payload.message);
-    if (!code) {
-        logger.warn(`Ko-fi payment ${transactionId} had no recognizable Server Supporter claim code in its message.`);
-        return { status: 'unmatched', reason: 'No claim code found in message' };
+    let claimKey = null;
+    let claim = null;
+    let matchedBy = null;
+
+    const emailMatch = await findClaimByEmail(client, payload.email);
+    if (emailMatch) {
+        claimKey = emailMatch.key;
+        claim = emailMatch.claim;
+        matchedBy = 'email';
+    } else {
+        const code = extractClaimCode(payload.message);
+        if (code) {
+            claimKey = `temp:vip:claim:${code}`;
+            claim = await client.db.get(claimKey, null);
+            matchedBy = 'code';
+        }
     }
 
-    const claimKey = `temp:vip:claim:${code}`;
-    const claim = await client.db.get(claimKey, null);
     if (!claim) {
-        logger.warn(`Ko-fi payment ${transactionId} referenced claim code ${code}, which was not found or expired.`);
-        return { status: 'unmatched', reason: 'Claim code not found or expired', code };
+        logger.warn(`Ko-fi payment ${transactionId} matched no pending claim by email (${payload.email || 'none'}) or code.`);
+        return { status: 'unmatched', reason: 'No matching linked email or claim code' };
     }
 
     const paidAmount = Number.parseFloat(payload.amount);
     if (!Number.isFinite(paidAmount) || paidAmount < claim.amount) {
-        logger.warn(`Ko-fi payment ${transactionId} for code ${code} paid ${payload.amount}, expected at least ${claim.amount}.`);
+        logger.warn(`Ko-fi payment ${transactionId} matched by ${matchedBy} paid ${payload.amount}, expected at least ${claim.amount}.`);
         return { status: 'underpaid', claim, paidAmount };
     }
 
     const guild = client.guilds.cache.get(claim.guildId);
     if (!guild) {
-        logger.error(`Ko-fi payment ${transactionId}: bot is not in guild ${claim.guildId} for claim ${code}.`);
+        logger.error(`Ko-fi payment ${transactionId}: bot is not in guild ${claim.guildId} for claim matched by ${matchedBy}.`);
         return { status: 'error', reason: 'Guild not found', claim };
     }
 
@@ -229,7 +280,7 @@ export async function fulfillKofiPayment(client, payload) {
 
     try {
         const member = await guild.members.fetch(claim.userId);
-        await member.roles.add(supporterRoleId, `Ko-fi Server Supporter purchase (transaction ${transactionId})`);
+        await member.roles.add(supporterRoleId, `Ko-fi Server Supporter purchase (transaction ${transactionId}, matched by ${matchedBy})`);
 
         if (claim.steamId) {
             await queuePalworldReward(client, {
@@ -241,10 +292,10 @@ export async function fulfillKofiPayment(client, payload) {
                 kofiTransactionId: transactionId,
             });
         } else {
-            logger.warn(`Ko-fi payment ${transactionId}: claim ${code} had no linked SteamID, no Palworld reward queued.`);
+            logger.warn(`Ko-fi payment ${transactionId}: claim had no linked SteamID, no Palworld reward queued.`);
         }
 
-        await client.db.set(txnKey, { code, guildId: claim.guildId, userId: claim.userId, itemId: claim.itemId }, null);
+        await client.db.set(txnKey, { matchedBy, guildId: claim.guildId, userId: claim.userId, itemId: claim.itemId }, null);
         await client.db.delete(claimKey);
 
         try {
@@ -253,9 +304,9 @@ export async function fulfillKofiPayment(client, payload) {
             // DMs closed; not a failure of the purchase itself.
         }
 
-        return { status: 'fulfilled', guildId: claim.guildId, userId: claim.userId, roleId: supporterRoleId };
+        return { status: 'fulfilled', guildId: claim.guildId, userId: claim.userId, roleId: supporterRoleId, matchedBy };
     } catch (error) {
-        logger.error(`Ko-fi payment ${transactionId}: failed to grant Server Supporter role for claim ${code}:`, error);
+        logger.error(`Ko-fi payment ${transactionId}: failed to grant Server Supporter role:`, error);
         return { status: 'error', reason: error.message, claim };
     }
 }
