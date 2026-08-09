@@ -22,7 +22,23 @@ const DEFAULT_PLAYER = () => ({
     bestStreak: 0,
     points: 0,
     lastStreakBonusAt: 0,
+    name: null,
 });
+
+// Player identity is either a Discord snowflake (manual /pvp log-kill,
+// rendered as a mention) or "steam:<steamid64>" (automatic in-game kill
+// tracking, rendered with the stored in-game name since there's no
+// guaranteed Discord account behind it).
+export function isSteamIdentity(id) {
+    return typeof id === 'string' && id.startsWith('steam:');
+}
+
+export function displayNameFor(entry) {
+    if (isSteamIdentity(entry.userId)) {
+        return entry.name || 'Unknown Player';
+    }
+    return `<@${entry.userId}>`;
+}
 
 function seasonKey(guildId) {
     return `cache:pvp:season:${guildId}`;
@@ -57,7 +73,7 @@ function applyStreakBonus(player) {
     return null;
 }
 
-export async function recordKill(client, guildId, { killerId, victimId }) {
+export async function recordKill(client, guildId, { killerId, victimId, killerName = null, victimName = null }) {
     if (killerId === victimId) {
         throw createError(
             'Killer and victim are the same user',
@@ -70,6 +86,9 @@ export async function recordKill(client, guildId, { killerId, victimId }) {
     const season = await readSeason(client, guildId);
     const killer = season.players[killerId] || DEFAULT_PLAYER();
     const victim = season.players[victimId] || DEFAULT_PLAYER();
+
+    if (killerName) killer.name = killerName;
+    if (victimName) victim.name = victimName;
 
     killer.kills += 1;
     killer.points += POINTS.kill;

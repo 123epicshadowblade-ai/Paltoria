@@ -93,6 +93,8 @@ const appConfig = {
       password: process.env.PALWORLD_SFTP_PASSWORD || null,
       statsFilePath: process.env.PALWORLD_STATS_FILE_PATH
         || '/Pal/Binaries/Win64/ue4ss/Mods/PaltoriaStatsReport/stats.json',
+      killsFilePath: process.env.PALWORLD_KILLS_FILE_PATH
+        || '/Pal/Binaries/Win64/ue4ss/Mods/PaltoriaKillTracker/kills.jsonl',
     },
   },
 

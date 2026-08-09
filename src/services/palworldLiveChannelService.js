@@ -3,7 +3,7 @@ import { getColor } from '../config/bot.js';
 import { logger } from '../utils/logger.js';
 import { getOnlinePlayers } from './palworldStatusService.js';
 import { getCachedPalworldLeaderboard } from './palworldStatsService.js';
-import { getSeasonLeaderboard } from './pvpService.js';
+import { getSeasonLeaderboard, displayNameFor } from './pvpService.js';
 
 function configKey(guildId) {
     return `guild:${guildId}:palworldLiveChannel`;
@@ -32,7 +32,7 @@ function buildDashboardEmbed({ players, max, leaderboard, pvpEntries }) {
 
     const topPvp = pvpEntries.length > 0
         ? pvpEntries.slice(0, 5).map((p, i) =>
-            `${i + 1}. <@${p.userId}> — ${p.kills}K/${p.deaths}D (${p.kd.toFixed(2)} KDA), ${p.points} pts`,
+            `${i + 1}. ${displayNameFor(p)} — ${p.kills}K/${p.deaths}D (${p.kd.toFixed(2)} KDA), ${p.points} pts`,
         ).join('\n')
         : '_No PvP activity logged yet — use /pvp log-kill_';
 

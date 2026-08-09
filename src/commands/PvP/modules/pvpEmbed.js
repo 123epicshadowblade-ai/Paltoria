@@ -1,5 +1,6 @@
 import { EmbedBuilder } from 'discord.js';
 import { getColor } from '../../../config/bot.js';
+import { displayNameFor } from '../../../services/pvpService.js';
 
 const RANK_EMOJI = ['🥇', '🥈', '🥉'];
 
@@ -16,7 +17,7 @@ export function buildPvpLeaderboardEmbed(guildName, seasonLabel, entries) {
     const fields = entries.length === 0
         ? [{ name: 'No PvP activity yet', value: 'Kills and bounties logged by staff will show up here.' }]
         : entries.map((entry, index) => ({
-            name: `${rankLabel(index)} #${index + 1} • <@${entry.userId}>`,
+            name: `${rankLabel(index)} #${index + 1} • ${displayNameFor(entry)}`,
             value:
                 `⭐ ${entry.points} PTS ・ 🔪 ${entry.kills} K ・ 💀 ${entry.deaths} D ・ 📊 ${entry.kd.toFixed(2)} K/D\n` +
                 `🔥 ${entry.bestStreak} Best Streak ・ 💰 ${entry.bounties} Bounties`,

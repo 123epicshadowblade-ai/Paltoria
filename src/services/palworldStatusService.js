@@ -23,6 +23,26 @@ export async function getOnlinePlayers(rconConfig) {
     }
 }
 
+const UID_CACHE_KEY = 'cache:palworld:uid_map';
+
+// Keyed by the same hex playeruid format Palworld's own RCON reports, so
+// the kill tracker (which reads that identical GUID format straight from
+// UE4SS) can resolve a killer/victim UID to a SteamID64 + display name
+// even after the player has since disconnected.
+async function updatePlayerUidCache(client, players) {
+    if (!client.db || players.length === 0) return;
+    const map = (await client.db.get(UID_CACHE_KEY, {})) || {};
+    for (const p of players) {
+        if (!p.playeruid) continue;
+        map[p.playeruid] = { steamid: p.steamid, name: p.name, lastSeen: Date.now() };
+    }
+    await client.db.set(UID_CACHE_KEY, map, null);
+}
+
+export async function getPlayerUidCache(client) {
+    return (await client.db.get(UID_CACHE_KEY, {})) || {};
+}
+
 export async function updatePalworldPresence(client) {
     const rconConfig = client.config?.palworld?.rcon;
     if (!rconConfig?.host || !rconConfig?.port || !rconConfig?.password) {
@@ -31,6 +51,7 @@ export async function updatePalworldPresence(client) {
 
     try {
         const players = await getOnlinePlayers(rconConfig);
+        await updatePlayerUidCache(client, players);
         const count = players.length;
         const max = rconConfig.maxPlayers;
         const state = max ? `${count}/${max} players online` : `${count} players online`;
