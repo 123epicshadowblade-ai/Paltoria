@@ -9,7 +9,7 @@ export default {
             const embed = new EmbedBuilder()
                 .setTitle('⭐ Server Supporter')
                 .setColor(getColor('primary'))
-                .setDescription('Support the server with a one-time Ko-fi donation and get the Server Supporter role. Click a tier below to get your claim code.');
+                .setDescription('Support the server with a one-time Ko-fi donation and get the Server Supporter role plus an in-game Palworld reward. Click a tier below — first-time buyers will be asked to link their SteamID64.');
 
             shopItems.forEach(item => {
                 embed.addFields({

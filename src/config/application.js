@@ -78,6 +78,10 @@ const appConfig = {
     claimExpiryMinutes: Number(process.env.VIP_CLAIM_EXPIRY_MINUTES || 60),
   },
 
+  palworld: {
+    apiKey: process.env.PALWORLD_API_KEY || null,
+  },
+
   features: {
     ...botConfig.features,
     music: botConfig.features?.music ?? true,

@@ -17,7 +17,7 @@ import { initializeMusic } from './services/music/riffySetup.js';
 import { shutdownMusic } from './services/music/playerHandler.js';
 import pkg from '../package.json' with { type: 'json' };
 import { EXPECTED_SCHEMA_VERSION, EXPECTED_SCHEMA_LABEL } from './config/database/schemaVersion.js';
-import { fulfillKofiPayment } from './services/vipService.js';
+import { fulfillKofiPayment, getPendingPalworldRewards, ackPalworldRewards } from './services/vipService.js';
 import crypto from 'crypto';
 
 class TitanBot extends Client {
@@ -246,6 +246,49 @@ class TitanBot extends Client {
       // Always 200 once the token is verified, so Ko-fi does not endlessly retry
       // payments that failed to match a claim (those are logged for manual review).
       res.sendStatus(200);
+    });
+
+    const requirePalworldApiKey = (req, res, next) => {
+      const expectedKey = this.config?.palworld?.apiKey;
+      if (!expectedKey) {
+        return res.status(503).json({ error: 'Palworld API key not configured' });
+      }
+
+      const providedKey = Buffer.from(String(req.headers['x-api-key'] || ''));
+      const expected = Buffer.from(String(expectedKey));
+      const keyMatches = providedKey.length === expected.length
+        && crypto.timingSafeEqual(providedKey, expected);
+
+      if (!keyMatches) {
+        return res.status(401).json({ error: 'Invalid API key' });
+      }
+
+      next();
+    };
+
+    app.get('/api/palworld/rewards', requirePalworldApiKey, async (req, res) => {
+      try {
+        const rewards = await getPendingPalworldRewards(this);
+        res.status(200).json({ rewards });
+      } catch (error) {
+        logger.error('Error fetching Palworld reward queue:', error);
+        res.status(500).json({ error: 'Failed to fetch reward queue' });
+      }
+    });
+
+    app.post('/api/palworld/rewards/ack', express.json(), requirePalworldApiKey, async (req, res) => {
+      const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
+      if (ids.length === 0) {
+        return res.status(400).json({ error: 'ids must be a non-empty array' });
+      }
+
+      try {
+        const acknowledged = await ackPalworldRewards(this, ids);
+        res.status(200).json({ acknowledged });
+      } catch (error) {
+        logger.error('Error acknowledging Palworld rewards:', error);
+        res.status(500).json({ error: 'Failed to acknowledge rewards' });
+      }
     });
 
     const startServer = (port, attempt = 0) => {
