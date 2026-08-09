@@ -80,6 +80,12 @@ const appConfig = {
 
   palworld: {
     apiKey: process.env.PALWORLD_API_KEY || null,
+    rcon: {
+      host: process.env.PALWORLD_RCON_HOST || null,
+      port: Number(process.env.PALWORLD_RCON_PORT || 0) || null,
+      password: process.env.PALWORLD_RCON_PASSWORD || null,
+      maxPlayers: Number(process.env.PALWORLD_MAX_PLAYERS || 0) || null,
+    },
   },
 
   features: {
