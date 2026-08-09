@@ -1,4 +1,4 @@
-import { shopItems, getItemById, getItemsByType, getItemPrice, validatePurchase } from './items.js';
+import { shopItems, getItemById, getItemsByType, getItemPrice } from './items.js';
 import { botConfig } from '../bot.js';
 
 const { currency } = botConfig.economy;
@@ -117,8 +117,7 @@ export {
     shopItems,
     getItemById,
     getItemsByType,
-    getItemPrice,
-    validatePurchase
+    getItemPrice
 };
 
 export function getCurrentPrice(itemId, { quantity = 1, userData = null } = {}) {

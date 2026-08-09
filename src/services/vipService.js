@@ -1,6 +1,9 @@
 import crypto from 'crypto';
 import { getGuildConfig } from './config/guildConfig.js';
 import { logger } from '../utils/logger.js';
+import { infoEmbed } from '../utils/embeds.js';
+import { createError, ErrorTypes } from '../utils/errorHandler.js';
+import { getItemById } from '../config/shop/items.js';
 
 const CLAIM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CLAIM_CODE_LENGTH = 8;
@@ -41,6 +44,60 @@ export async function createVipClaim(client, { guildId, userId, itemId, amount, 
     );
 
     return { code, expiresInMinutes: claimExpiryMinutes };
+}
+
+/**
+ * Shared by /buy and the shop buttons: validates config, creates a claim,
+ * and returns the embed instructing the buyer how to complete payment.
+ */
+export async function startSupporterPurchase(client, { itemId, guildId, userId }) {
+    const item = getItemById(itemId);
+    if (!item || item.type !== 'real_money') {
+        throw createError(
+            `Item ${itemId} not found`,
+            ErrorTypes.VALIDATION,
+            `The item \`${itemId}\` does not exist in the shop.`,
+            { itemId },
+        );
+    }
+
+    const kofiConfig = client.config?.kofi || {};
+    if (!kofiConfig.pageUrl) {
+        throw createError(
+            'Ko-fi not configured',
+            ErrorTypes.CONFIGURATION,
+            "Server Supporter purchases are not available yet; the server owner hasn't configured Ko-fi.",
+            { itemId },
+        );
+    }
+
+    const guildConfig = await getGuildConfig(client, guildId);
+    if (!guildConfig.supporterRoleId) {
+        throw createError(
+            'Server Supporter role not configured',
+            ErrorTypes.CONFIGURATION,
+            'The **Server Supporter role** has not been configured by a server administrator yet.',
+            { itemId },
+        );
+    }
+
+    const { code, expiresInMinutes } = await createVipClaim(client, {
+        guildId,
+        userId,
+        itemId: item.id,
+        amount: item.price,
+        currency: item.currency || 'USD',
+    });
+
+    return infoEmbed(
+        '⭐ Complete Your Server Supporter Purchase',
+        `You're purchasing **${item.name}** (**$${item.price} ${item.currency || 'USD'}**) via Ko-fi.\n\n` +
+        `1. Go to ${kofiConfig.pageUrl}\n` +
+        `2. Donate **at least $${item.price}**\n` +
+        `3. In the message field, paste this claim code exactly:\n\n` +
+        `\`\`\`${code}\`\`\`\n` +
+        `Your Server Supporter role will be granted automatically once the payment is confirmed. This code expires in **${expiresInMinutes} minutes**.`,
+    );
 }
 
 function extractClaimCode(message) {
