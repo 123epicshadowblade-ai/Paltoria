@@ -17,8 +17,7 @@ export default {
         try {
             const currentConfig = await getGuildConfig(client, guildId);
             currentConfig.supporterRoleId = role.id;
-            const saved = await setGuildConfig(client, guildId, currentConfig);
-            logger.warn(`[DEBUG supporter] set guildId=${guildId} role.id=${role.id} saved.supporterRoleId=${saved?.supporterRoleId}`);
+            await setGuildConfig(client, guildId, currentConfig);
 
             return InteractionHelper.safeReply(interaction, {
                 embeds: [successEmbed('Server Supporter Role Set', `The **Server Supporter Role** has been set to ${role.toString()}. Members who complete a Ko-fi Server Supporter purchase will be granted this role. Make sure the bot's role is above it and it has **Manage Roles** permission.`)],
