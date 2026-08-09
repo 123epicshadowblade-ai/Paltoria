@@ -3,6 +3,7 @@ import { getColor } from '../config/bot.js';
 import { logger } from '../utils/logger.js';
 import { getOnlinePlayers } from './palworldStatusService.js';
 import { getCachedPalworldLeaderboard } from './palworldStatsService.js';
+import { getSeasonLeaderboard } from './pvpService.js';
 
 function configKey(guildId) {
     return `guild:${guildId}:palworldLiveChannel`;
@@ -20,7 +21,7 @@ export async function clearLiveChannelConfig(client, guildId) {
     await client.db.delete(configKey(guildId));
 }
 
-function buildDashboardEmbed({ players, max, leaderboard }) {
+function buildDashboardEmbed({ players, max, leaderboard, pvpEntries }) {
     const onlineList = players.length > 0
         ? players.map(p => `• ${p.name}`).join('\n')
         : '_No players online_';
@@ -29,12 +30,19 @@ function buildDashboardEmbed({ players, max, leaderboard }) {
         ? leaderboard.slice(0, 5).map((p, i) => `${i + 1}. **${p.name}** — Lv ${p.level} (${(p.exp || 0).toLocaleString()} EXP)`).join('\n')
         : '_No level data yet_';
 
+    const topPvp = pvpEntries.length > 0
+        ? pvpEntries.slice(0, 5).map((p, i) =>
+            `${i + 1}. <@${p.userId}> — ${p.kills}K/${p.deaths}D (${p.kd.toFixed(2)} KDA), ${p.points} pts`,
+        ).join('\n')
+        : '_No PvP activity logged yet — use /pvp log-kill_';
+
     return new EmbedBuilder()
         .setTitle('Palworld Server Status')
         .setColor(getColor('primary'))
         .addFields(
             { name: `Online Players (${players.length}${max ? `/${max}` : ''})`, value: onlineList },
             { name: 'Top Levels', value: topLevels },
+            { name: 'Top PvP (Kills/Deaths)', value: topPvp },
         )
         .setDescription(`Updates automatically every ~2 minutes • Last updated <t:${Math.floor(Date.now() / 1000)}:R>`);
 }
@@ -57,12 +65,13 @@ export async function refreshLiveChannels(client) {
                 continue;
             }
 
-            const [players, { players: leaderboard }] = await Promise.all([
+            const [players, { players: leaderboard }, { entries: pvpEntries }] = await Promise.all([
                 getOnlinePlayers(rconConfig),
                 getCachedPalworldLeaderboard(client),
+                getSeasonLeaderboard(client, guild.id, 5),
             ]);
 
-            const embed = buildDashboardEmbed({ players, max: rconConfig.maxPlayers, leaderboard });
+            const embed = buildDashboardEmbed({ players, max: rconConfig.maxPlayers, leaderboard, pvpEntries });
 
             let dashboardMessage = null;
             if (config.dashboardMessageId) {
