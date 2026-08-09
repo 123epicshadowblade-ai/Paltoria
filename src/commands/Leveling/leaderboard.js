@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { logger } from '../../utils/logger.js';
 import { TitanBotError, ErrorTypes } from '../../utils/errorHandler.js';
 import { getLeaderboard, getLevelingConfig, getXpForLevel } from '../../services/leveling/leveling.js';
@@ -69,7 +69,17 @@ export default {
       value: leaderboardText.join('\n')
     });
 
-    await InteractionHelper.safeEditReply(interaction, { embeds: [embed] });
+    const components = [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('palworld_leaderboard')
+          .setLabel('Palworld Levels')
+          .setEmoji('🎮')
+          .setStyle(ButtonStyle.Secondary)
+      ),
+    ];
+
+    await InteractionHelper.safeEditReply(interaction, { embeds: [embed], components });
     logger.debug(`Leaderboard displayed for guild ${interaction.guildId}`);
   }
 };
