@@ -26,6 +26,14 @@ export default {
                     .setStyle(ButtonStyle.Success)
             );
 
+            buttons.push(
+                new ButtonBuilder()
+                    .setCustomId('supporter_leaderboard')
+                    .setLabel('Top Supporters')
+                    .setEmoji('🏆')
+                    .setStyle(ButtonStyle.Secondary)
+            );
+
             const components = [new ActionRowBuilder().addComponents(buttons)];
 
             await interaction.reply({ embeds: [embed], components, flags: 0 });

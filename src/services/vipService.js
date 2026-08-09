@@ -204,6 +204,22 @@ export async function ackPalworldRewards(client, ids) {
     return queue.length - remaining.length;
 }
 
+async function recordSupporterSpend(client, guildId, userId, amount) {
+    const key = `cache:supporter:totals:${guildId}`;
+    const totals = (await client.db.get(key, {})) || {};
+    const existing = totals[userId] || { total: 0, count: 0 };
+    totals[userId] = { total: existing.total + amount, count: existing.count + 1 };
+    await client.db.set(key, totals, null);
+}
+
+export async function getSupporterLeaderboard(client, guildId, limit = 10) {
+    const totals = (await client.db.get(`cache:supporter:totals:${guildId}`, {})) || {};
+    return Object.entries(totals)
+        .map(([userId, data]) => ({ userId, total: data.total, count: data.count }))
+        .sort((a, b) => b.total - a.total)
+        .slice(0, limit);
+}
+
 async function findClaimByEmail(client, email) {
     if (!email) return null;
     const normalizedEmail = email.trim().toLowerCase();
@@ -294,6 +310,8 @@ export async function fulfillKofiPayment(client, payload) {
         } else {
             logger.warn(`Ko-fi payment ${transactionId}: claim had no linked SteamID, no Palworld reward queued.`);
         }
+
+        await recordSupporterSpend(client, claim.guildId, claim.userId, paidAmount);
 
         await client.db.set(txnKey, { matchedBy, guildId: claim.guildId, userId: claim.userId, itemId: claim.itemId }, null);
         await client.db.delete(claimKey);
