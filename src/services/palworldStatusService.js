@@ -2,7 +2,7 @@ import { Rcon } from 'rcon-client';
 import { ActivityType } from 'discord.js';
 import { logger } from '../utils/logger.js';
 
-async function getOnlinePlayerCount(rconConfig) {
+export async function getOnlinePlayers(rconConfig) {
     const rcon = await Rcon.connect({
         host: rconConfig.host,
         port: rconConfig.port,
@@ -14,7 +14,10 @@ async function getOnlinePlayerCount(rconConfig) {
         const response = await rcon.send('ShowPlayers');
         const lines = response.split('\n').map(l => l.trim()).filter(Boolean);
         // First line is the "name,playeruid,steamid" header.
-        return Math.max(0, lines.length - 1);
+        return lines.slice(1).map(line => {
+            const [name, playeruid, steamid] = line.split(',').map(part => part.trim());
+            return { name, playeruid, steamid };
+        }).filter(p => p.name);
     } finally {
         rcon.end();
     }
@@ -27,7 +30,8 @@ export async function updatePalworldPresence(client) {
     }
 
     try {
-        const count = await getOnlinePlayerCount(rconConfig);
+        const players = await getOnlinePlayers(rconConfig);
+        const count = players.length;
         const max = rconConfig.maxPlayers;
         const state = max ? `${count}/${max} players online` : `${count} players online`;
 

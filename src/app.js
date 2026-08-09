@@ -16,6 +16,7 @@ import { EXPECTED_SCHEMA_VERSION, EXPECTED_SCHEMA_LABEL } from './config/databas
 import { fulfillKofiPayment, getPendingPalworldRewards, ackPalworldRewards } from './services/vipService.js';
 import { updatePalworldPresence } from './services/palworldStatusService.js';
 import { refreshPalworldStatsCache } from './services/palworldStatsService.js';
+import { refreshLiveChannels } from './services/palworldLiveChannelService.js';
 import crypto from 'crypto';
 
 class TitanBot extends Client {
@@ -330,6 +331,8 @@ class TitanBot extends Client {
     runSafeTask('palworld_presence', () => updatePalworldPresence(this))();
     cron.schedule('*/2 * * * *', runSafeTask('palworld_stats', () => refreshPalworldStatsCache(this)));
     runSafeTask('palworld_stats', () => refreshPalworldStatsCache(this))();
+    cron.schedule('*/2 * * * *', runSafeTask('palworld_live_channel', () => refreshLiveChannels(this)));
+    runSafeTask('palworld_live_channel', () => refreshLiveChannels(this))();
   }
 
   async updateAllCounters() {
