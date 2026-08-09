@@ -2,6 +2,7 @@ import { SlashCommandBuilder, MessageFlags, ModalBuilder, TextInputBuilder, Text
 import { withErrorHandling } from '../../utils/errorHandler.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 import { startSupporterPurchase, getLinkedAccount } from '../../services/vipService.js';
+import { deliverToSupporterChannel } from '../../services/supporterChannelService.js';
 
 export default {
     data: new SlashCommandBuilder()
@@ -54,6 +55,6 @@ export default {
         if (!deferred) return;
 
         const embed = await startSupporterPurchase(client, { itemId, guildId, userId, account: linkedAccount });
-        await InteractionHelper.safeEditReply(interaction, { embeds: [embed] });
+        await deliverToSupporterChannel(client, interaction, embed);
     }, { command: 'buy' })
 };

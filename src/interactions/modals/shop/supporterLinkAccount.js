@@ -1,5 +1,6 @@
 import { MessageFlags } from 'discord.js';
 import { linkAccount, startSupporterPurchase } from '../../../services/vipService.js';
+import { deliverToSupporterChannel } from '../../../services/supporterChannelService.js';
 import { InteractionHelper } from '../../../utils/interactionHelper.js';
 import { handleInteractionError } from '../../../utils/errorHandler.js';
 
@@ -18,7 +19,7 @@ const supporterLinkAccountHandler = {
 
             const account = await linkAccount(client, guildId, userId, { steamId, email });
             const embed = await startSupporterPurchase(client, { itemId, guildId, userId, account });
-            await InteractionHelper.safeEditReply(interaction, { embeds: [embed] });
+            await deliverToSupporterChannel(client, interaction, embed);
         } catch (error) {
             await handleInteractionError(interaction, error, { type: 'modal', customId: interaction.customId });
         }

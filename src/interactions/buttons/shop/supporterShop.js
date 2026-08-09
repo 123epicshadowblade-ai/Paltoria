@@ -1,5 +1,6 @@
 import { MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
 import { startSupporterPurchase, getLinkedAccount } from '../../../services/vipService.js';
+import { deliverToSupporterChannel } from '../../../services/supporterChannelService.js';
 import { InteractionHelper } from '../../../utils/interactionHelper.js';
 import { handleInteractionError } from '../../../utils/errorHandler.js';
 
@@ -46,7 +47,7 @@ const supporterBuyHandler = {
             if (!deferred) return;
 
             const embed = await startSupporterPurchase(client, { itemId, guildId, userId, account: linkedAccount });
-            await InteractionHelper.safeEditReply(interaction, { embeds: [embed] });
+            await deliverToSupporterChannel(client, interaction, embed);
         } catch (error) {
             await handleInteractionError(interaction, error, { type: 'button', customId: interaction.customId });
         }
