@@ -95,6 +95,8 @@ const appConfig = {
         || '/Pal/Binaries/Win64/ue4ss/Mods/PaltoriaStatsReport/stats.json',
       killsFilePath: process.env.PALWORLD_KILLS_FILE_PATH
         || '/Pal/Binaries/Win64/ue4ss/Mods/PaltoriaKillTracker/kills.jsonl',
+      settingsFilePath: process.env.PALWORLD_SETTINGS_FILE_PATH
+        || '/Pal/Saved/Config/WindowsServer/PalWorldSettings.ini',
     },
   },
 
