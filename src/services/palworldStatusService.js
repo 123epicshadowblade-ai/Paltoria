@@ -43,7 +43,34 @@ export async function getPlayerUidCache(client) {
     return (await client.db.get(UID_CACHE_KEY, {})) || {};
 }
 
+const PRESENCE_OVERRIDE_KEY = 'guild:presenceOverride';
+
+// A manually-set status (e.g. "Balancing") takes priority over the
+// automatic "X/Y players online" text and stays in place indefinitely --
+// it's never auto-cleared by player count changes, only by an explicit
+// /palworld-status set-status clear.
+export async function getPresenceOverride(client) {
+    return client.db.get(PRESENCE_OVERRIDE_KEY, null);
+}
+
+export async function setPresenceOverride(client, text) {
+    await client.db.set(PRESENCE_OVERRIDE_KEY, text, null);
+}
+
+export async function clearPresenceOverride(client) {
+    await client.db.delete(PRESENCE_OVERRIDE_KEY);
+}
+
 export async function updatePalworldPresence(client) {
+    const override = await getPresenceOverride(client);
+    if (override) {
+        client.user.setPresence({
+            status: 'online',
+            activities: [{ name: 'Custom Status', state: override, type: ActivityType.Custom }],
+        });
+        return;
+    }
+
     const rconConfig = client.config?.palworld?.rcon;
     if (!rconConfig?.host || !rconConfig?.port || !rconConfig?.password) {
         return;

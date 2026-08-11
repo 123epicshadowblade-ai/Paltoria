@@ -3,6 +3,7 @@ import { logger } from '../../utils/logger.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 import palworldStatusSetup from './modules/palworldstatus_setup.js';
 import palworldStatusDisable from './modules/palworldstatus_disable.js';
+import palworldStatusSetStatus from './modules/palworldstatus_setstatus.js';
 
 export default {
     data: new SlashCommandBuilder()
@@ -25,6 +26,17 @@ export default {
                 .setName('disable')
                 .setDescription('Stop updating the Palworld status channel (does not delete it).'),
         )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('set-status')
+                .setDescription("Lock the bot's Discord status to fixed text, overriding the automatic player count.")
+                .addStringOption(option =>
+                    option
+                        .setName('text')
+                        .setDescription('Status text to show (e.g. "Balancing"). Omit or use "clear" to resume automatic player count.')
+                        .setRequired(false),
+                ),
+        )
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
         .setDMPermission(false),
     category: 'Palworld',
@@ -44,5 +56,6 @@ export default {
 
         if (subcommand === 'setup') return palworldStatusSetup.execute(interaction, config, client);
         if (subcommand === 'disable') return palworldStatusDisable.execute(interaction, config, client);
+        if (subcommand === 'set-status') return palworldStatusSetStatus.execute(interaction, config, client);
     },
 };
