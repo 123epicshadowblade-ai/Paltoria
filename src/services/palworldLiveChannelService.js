@@ -32,9 +32,9 @@ function buildDashboardEmbed({ players, max, leaderboard, pvpEntries }) {
 
     const topPvp = pvpEntries.length > 0
         ? pvpEntries.slice(0, 5).map((p, i) =>
-            `${i + 1}. ${displayNameFor(p)} — ${p.kills}K/${p.deaths}D (${p.kd.toFixed(2)} KDA), ${p.points} pts`,
+            `${i + 1}. ${displayNameFor(p)} — ${p.kills} Kills, ${p.deaths} Deaths (${p.kd.toFixed(2)} KDA)`,
         ).join('\n')
-        : '_No PvP activity logged yet — use /pvp log-kill_';
+        : '_No PvP activity yet_';
 
     return new EmbedBuilder()
         .setTitle('Palworld Server Status')

@@ -126,7 +126,7 @@ export async function getSeasonLeaderboard(client, guildId, limit = 20) {
             ...p,
             kd: p.deaths > 0 ? p.kills / p.deaths : p.kills,
         }))
-        .sort((a, b) => b.points - a.points)
+        .sort((a, b) => b.kills - a.kills || b.kd - a.kd)
         .slice(0, limit);
 
     return { seasonLabel: season.seasonLabel, entries };
