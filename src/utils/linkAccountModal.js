@@ -1,9 +1,13 @@
 import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
 
 /**
- * Shared by /link and the "Edit Account Info" button: builds the
- * SteamID64 + email modal, pre-filled with whatever's already on file so
- * fixing a typo is just editing the field, not retyping everything.
+ * Shared by /link and the "Edit Account Info" button: builds the account +
+ * email modal, pre-filled with whatever's already on file so fixing a typo
+ * is just editing the field, not retyping everything. Accepts a SteamID64
+ * (Steam), a Player UID (Xbox/PS5, from staff), or an in-game character
+ * name -- console players have no SteamID and no self-service way to see
+ * their own UID, so name-based resolution against the live server is the
+ * only option that works for them without staff help.
  */
 export function buildLinkAccountModal(existing, customId = 'link_account_standalone') {
     const modal = new ModalBuilder()
@@ -12,12 +16,12 @@ export function buildLinkAccountModal(existing, customId = 'link_account_standal
 
     const steamIdInput = new TextInputBuilder()
         .setCustomId('steam_id')
-        .setLabel('SteamID64 (find yours at steamid.io)')
-        .setPlaceholder('7656119xxxxxxxxxx')
+        .setLabel('SteamID64, Player UID, or Character Name')
+        .setPlaceholder('7656119... (Steam) or your in-game name')
         .setRequired(true)
         .setStyle(TextInputStyle.Short)
-        .setMinLength(17)
-        .setMaxLength(17);
+        .setMinLength(2)
+        .setMaxLength(40);
     if (existing?.steamId) steamIdInput.setValue(existing.steamId);
 
     const emailInput = new TextInputBuilder()

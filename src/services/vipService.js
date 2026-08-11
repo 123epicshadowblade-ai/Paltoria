@@ -4,10 +4,14 @@ import { logger } from '../utils/logger.js';
 import { infoEmbed } from '../utils/embeds.js';
 import { createError, ErrorTypes } from '../utils/errorHandler.js';
 import { getItemById } from '../config/shop/items.js';
+import { getPlayerUidCache } from './palworldStatusService.js';
 
 const CLAIM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CLAIM_CODE_LENGTH = 8;
 const STEAMID64_PATTERN = /^7656119\d{10}$/;
+// Palworld's own RCON ShowPlayers format -- the only identifier Xbox/PS5
+// players have, since they have no SteamID at all.
+const PLAYER_UID_PATTERN = /^[0-9A-Fa-f]{32}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function generateClaimCode() {
@@ -23,6 +27,10 @@ export function isValidSteamId64(steamId) {
     return typeof steamId === 'string' && STEAMID64_PATTERN.test(steamId);
 }
 
+export function isValidPlayerUid(id) {
+    return typeof id === 'string' && PLAYER_UID_PATTERN.test(id);
+}
+
 export function isValidEmail(email) {
     return typeof email === 'string' && EMAIL_PATTERN.test(email);
 }
@@ -31,15 +39,44 @@ export async function getLinkedAccount(client, guildId, userId) {
     return client.db.get(`account:link:${guildId}:${userId}`, null);
 }
 
-export async function linkAccount(client, guildId, userId, { steamId, email }) {
-    if (!isValidSteamId64(steamId)) {
+/**
+ * Resolves whatever the player typed into a stable identifier:
+ *  - a real SteamID64 (Steam players), used as-is
+ *  - a raw 32-char Player UID (Xbox/PS5 players who got it from staff),
+ *    used as-is
+ *  - anything else is treated as their in-game character name and
+ *    resolved against the UID cache the bot builds from RCON every ~2
+ *    minutes -- the only self-service option for console players, who
+ *    have no way to see their own UID otherwise.
+ */
+async function resolvePlayerIdentifier(client, rawInput) {
+    if (isValidSteamId64(rawInput)) {
+        return { steamId: rawInput, playerUid: null };
+    }
+    if (isValidPlayerUid(rawInput)) {
+        return { steamId: null, playerUid: rawInput.toUpperCase() };
+    }
+
+    const uidCache = await getPlayerUidCache(client);
+    const nameQuery = rawInput.trim().toLowerCase();
+    const match = Object.entries(uidCache).find(([, entry]) => entry.name?.toLowerCase() === nameQuery);
+
+    if (!match) {
         throw createError(
-            'Invalid SteamID64',
+            'Could not resolve player identifier',
             ErrorTypes.VALIDATION,
-            "That doesn't look like a valid SteamID64 (17 digits, starting with 7656119). You can find yours at https://steamid.io.",
-            { steamId },
+            "That doesn't look like a valid SteamID64, and I couldn't match it to a character name that's been online recently. " +
+            'If you play on Steam, use your SteamID64 (find it at https://steamid.io). ' +
+            "If you play on Xbox/PS5, type your exact in-game character name after joining the server at least once, or ask staff for your Player UID.",
+            { rawInput },
         );
     }
+
+    const [playerUid, entry] = match;
+    return { steamId: entry.steamid && isValidSteamId64(entry.steamid) ? entry.steamid : null, playerUid };
+}
+
+export async function linkAccount(client, guildId, userId, { steamId: rawInput, email }) {
     if (!isValidEmail(email)) {
         throw createError(
             'Invalid email',
@@ -49,8 +86,12 @@ export async function linkAccount(client, guildId, userId, { steamId, email }) {
         );
     }
 
+    const { steamId, playerUid } = await resolvePlayerIdentifier(client, rawInput);
     const normalizedEmail = email.trim().toLowerCase();
-    const account = { steamId, email: normalizedEmail };
+    // steamId stays the primary identifier field for backward compatibility
+    // with everywhere else that reads account.steamId; console players who
+    // resolved to a UID (no real SteamID) get that UID stored here instead.
+    const account = { steamId: steamId || playerUid, playerUid, email: normalizedEmail };
     await client.db.set(`account:link:${guildId}:${userId}`, account, null);
     return account;
 }
@@ -135,7 +176,7 @@ export async function startSupporterPurchase(client, { itemId, guildId, userId, 
         throw createError(
             'Account not linked',
             ErrorTypes.VALIDATION,
-            'Link your SteamID64 and email first so your purchase can be matched automatically.',
+            'Link your Palworld account and email first so your purchase can be matched automatically.',
             { itemId },
         );
     }
@@ -150,12 +191,14 @@ export async function startSupporterPurchase(client, { itemId, guildId, userId, 
         email: linkedAccount.email,
     });
 
+    const identifierLabel = linkedAccount.playerUid && !isValidSteamId64(linkedAccount.steamId) ? 'Player UID' : 'SteamID';
+
     return infoEmbed(
         '⭐ Complete Your Server Supporter Purchase',
         `You're purchasing **${item.name}** (**$${item.price} ${item.currency || 'USD'}**) via Ko-fi.\n\n` +
         `1. Go to ${kofiConfig.pageUrl}\n` +
         `2. Pay with **${linkedAccount.email}** — **at least $${item.price}**\n\n` +
-        `That's it. Your Server Supporter role and Palworld reward (SteamID \`${linkedAccount.steamId}\`) are granted automatically once the payment lands, matched by that email — no code needed.\n\n` +
+        `That's it. Your Server Supporter role and Palworld reward (${identifierLabel} \`${linkedAccount.steamId}\`) are granted automatically once the payment lands, matched by that email — no code needed.\n\n` +
         `If you have to pay with a *different* email than the one you linked, paste this backup code in the Ko-fi message field instead:\n\`\`\`${code}\`\`\`\n` +
         `(Backup code expires in **${expiresInMinutes} minutes**; the email match doesn't expire.)`,
     );

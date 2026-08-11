@@ -1,8 +1,9 @@
-import { SlashCommandBuilder, MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { withErrorHandling } from '../../utils/errorHandler.js';
 import { InteractionHelper } from '../../utils/interactionHelper.js';
 import { startSupporterPurchase, getLinkedAccount } from '../../services/vipService.js';
 import { deliverToSupporterChannel } from '../../services/supporterChannelService.js';
+import { buildLinkAccountModal } from '../../utils/linkAccountModal.js';
 
 export default {
     data: new SlashCommandBuilder()
@@ -22,31 +23,7 @@ export default {
 
         const linkedAccount = await getLinkedAccount(client, guildId, userId);
         if (!linkedAccount) {
-            const modal = new ModalBuilder()
-                .setCustomId(`supporter_link_account:${itemId}`)
-                .setTitle('Link Your Account');
-
-            const steamIdInput = new TextInputBuilder()
-                .setCustomId('steam_id')
-                .setLabel('SteamID64 (find yours at steamid.io)')
-                .setPlaceholder('7656119xxxxxxxxxx')
-                .setRequired(true)
-                .setStyle(TextInputStyle.Short)
-                .setMinLength(17)
-                .setMaxLength(17);
-
-            const emailInput = new TextInputBuilder()
-                .setCustomId('email')
-                .setLabel('Email you\'ll pay with on Ko-fi')
-                .setPlaceholder('you@example.com')
-                .setRequired(true)
-                .setStyle(TextInputStyle.Short)
-                .setMaxLength(100);
-
-            modal.addComponents(
-                new ActionRowBuilder().addComponents(steamIdInput),
-                new ActionRowBuilder().addComponents(emailInput),
-            );
+            const modal = buildLinkAccountModal(null, `supporter_link_account:${itemId}`);
             await interaction.showModal(modal);
             return;
         }
