@@ -81,6 +81,11 @@ export async function sweepExpiredSupporterChannels(client) {
 function buildCloseRow() {
     return new ActionRowBuilder().addComponents(
         new ButtonBuilder()
+            .setCustomId('link_account_button')
+            .setLabel('Edit Account Info')
+            .setEmoji('🔗')
+            .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
             .setCustomId('supporter_channel_close')
             .setLabel('Close Channel')
             .setStyle(ButtonStyle.Danger),

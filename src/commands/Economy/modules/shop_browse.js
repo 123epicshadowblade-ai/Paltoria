@@ -26,15 +26,23 @@ export default {
                     .setStyle(ButtonStyle.Success)
             );
 
-            buttons.push(
+            const secondRow = [
                 new ButtonBuilder()
                     .setCustomId('supporter_leaderboard')
                     .setLabel('Top Supporters')
                     .setEmoji('🏆')
-                    .setStyle(ButtonStyle.Secondary)
-            );
+                    .setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder()
+                    .setCustomId('link_account_button')
+                    .setLabel('Edit Account Info')
+                    .setEmoji('🔗')
+                    .setStyle(ButtonStyle.Secondary),
+            ];
 
-            const components = [new ActionRowBuilder().addComponents(buttons)];
+            const components = [
+                new ActionRowBuilder().addComponents(buttons),
+                new ActionRowBuilder().addComponents(secondRow),
+            ];
 
             await interaction.reply({ embeds: [embed], components, flags: 0 });
         } catch (error) {
