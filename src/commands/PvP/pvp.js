@@ -6,6 +6,7 @@ import pvpLogKill from './modules/pvp_logkill.js';
 import pvpBounty from './modules/pvp_bounty.js';
 import pvpResetSeason from './modules/pvp_resetseason.js';
 import pvpLeaderboard from './modules/pvp_leaderboard.js';
+import { getSeasonLeaderboard, isSteamIdentity } from '../../services/pvpService.js';
 
 const MOD_ONLY_SUBCOMMANDS = new Set(['log-kill', 'bounty', 'reset-season']);
 
@@ -16,7 +17,13 @@ export default {
         .addSubcommand(subcommand =>
             subcommand
                 .setName('leaderboard')
-                .setDescription("Shows the server's PvP leaderboard for the current season."),
+                .setDescription("Shows the server's PvP leaderboard for the current season.")
+                .addStringOption(o =>
+                    o.setName('player')
+                        .setDescription('Look up one player instead of the top list')
+                        .setAutocomplete(true)
+                        .setRequired(false),
+                ),
         )
         .addSubcommand(subcommand =>
             subcommand
@@ -64,5 +71,27 @@ export default {
         if (subcommand === 'log-kill') return pvpLogKill.execute(interaction, config, client);
         if (subcommand === 'bounty') return pvpBounty.execute(interaction, config, client);
         if (subcommand === 'reset-season') return pvpResetSeason.execute(interaction, config, client);
+    },
+
+    async autocomplete(interaction, client) {
+        const focused = interaction.options.getFocused(true);
+        if (focused.name !== 'player') return interaction.respond([]);
+
+        const query = focused.value.toLowerCase();
+        const { entries } = await getSeasonLeaderboard(client, interaction.guildId, 1000);
+
+        const choices = entries
+            .map(entry => {
+                const name = isSteamIdentity(entry.userId)
+                    ? (entry.name || 'Unknown Player')
+                    : (interaction.guild.members.cache.get(entry.userId)?.displayName
+                        || interaction.guild.members.cache.get(entry.userId)?.user.username
+                        || null);
+                return name ? { name, value: entry.userId } : null;
+            })
+            .filter(choice => choice && choice.name.toLowerCase().includes(query))
+            .slice(0, 25);
+
+        return interaction.respond(choices);
     },
 };

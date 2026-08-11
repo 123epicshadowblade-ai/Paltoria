@@ -28,3 +28,15 @@ export function buildPvpLeaderboardEmbed(guildName, seasonLabel, entries) {
         fields,
     });
 }
+
+export function buildPvpPlayerResultEmbed(guildName, seasonLabel, entry, rank, total) {
+    return new EmbedBuilder({
+        title: `⚔️ ${guildName} • PVP Leaderboard`,
+        description: `🏆 Monthly Season — ${seasonLabel}`,
+        color: getColor('primary'),
+        fields: [{
+            name: `${rankLabel(rank - 1)} #${rank} of ${total} • ${displayNameFor(entry)}`,
+            value: `🔪 ${entry.kills} Kills ・ 💀 ${entry.deaths} Deaths ・ 📊 ${entry.kd.toFixed(2)} KDA`,
+        }],
+    });
+}
