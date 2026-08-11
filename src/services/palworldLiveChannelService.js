@@ -86,22 +86,6 @@ export async function refreshLiveChannels(client) {
                 config.dashboardMessageId = dashboardMessage.id;
             }
 
-            const previousUids = new Set(config.knownPlayerUids || []);
-            const currentUids = new Set(players.map(p => p.playeruid));
-
-            if (config.knownPlayerUids) {
-                const joined = players.filter(p => !previousUids.has(p.playeruid));
-                const leftCount = [...previousUids].filter(uid => !currentUids.has(uid)).length;
-
-                for (const player of joined) {
-                    await channel.send(`🟢 **${player.name}** joined the server`).catch(() => {});
-                }
-                if (leftCount > 0) {
-                    await channel.send(`🔴 ${leftCount} player${leftCount === 1 ? '' : 's'} left the server`).catch(() => {});
-                }
-            }
-
-            config.knownPlayerUids = [...currentUids];
             await setLiveChannelConfig(client, guild.id, config);
         } catch (error) {
             logger.warn(`Failed to refresh Palworld live channel for guild ${guild.id}: ${error.message}`);
