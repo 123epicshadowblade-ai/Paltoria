@@ -25,6 +25,9 @@ export default {
             return;
         }
 
+        const DIVIDER = { name: '​', value: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' };
+        const fields = groups.flatMap((group, index) => (index === 0 ? [group] : [DIVIDER, group]));
+
         // Built via the EmbedBuilder(data) constructor rather than
         // .setTitle()/.setDescription()/.addFields(): those setters are
         // patched app-wide (src/utils/embeds.js) to strip emoji from every
@@ -33,7 +36,7 @@ export default {
             title: '🐾 Paltoria — Server Settings',
             description: '📡 Read live from the server — always up to date.',
             color: getColor('primary'),
-            fields: groups,
+            fields,
         });
 
         await InteractionHelper.safeEditReply(interaction, { embeds: [embed] });
