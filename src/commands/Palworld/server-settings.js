@@ -30,7 +30,7 @@ export default {
         // patched app-wide (src/utils/embeds.js) to strip emoji from every
         // embed in the bot. Passing the raw data object skips that patch.
         const embed = new EmbedBuilder({
-            title: '🐾 Palworld Server Settings',
+            title: '🐾 Paltoria — Server Settings',
             description: '📡 Read live from the server — always up to date.',
             color: getColor('primary'),
             fields: groups,
