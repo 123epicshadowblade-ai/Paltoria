@@ -25,11 +25,16 @@ export default {
             return;
         }
 
-        const embed = new EmbedBuilder()
-            .setTitle('Palworld Server Settings')
-            .setColor(getColor('primary'))
-            .setDescription('Read live from the server — always up to date.')
-            .addFields(groups);
+        // Built via the EmbedBuilder(data) constructor rather than
+        // .setTitle()/.setDescription()/.addFields(): those setters are
+        // patched app-wide (src/utils/embeds.js) to strip emoji from every
+        // embed in the bot. Passing the raw data object skips that patch.
+        const embed = new EmbedBuilder({
+            title: '🐾 Palworld Server Settings',
+            description: '📡 Read live from the server — always up to date.',
+            color: getColor('primary'),
+            fields: groups,
+        });
 
         await InteractionHelper.safeEditReply(interaction, { embeds: [embed] });
     },
