@@ -477,8 +477,26 @@ try {
     process.on('SIGTERM', () => bot.shutdown('SIGTERM'));
     process.on('SIGINT', () => bot.shutdown('SIGINT'));
     
+    const TRANSIENT_NETWORK_ERROR_CODES = new Set([
+      'ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'EPIPE', 'EHOSTUNREACH', 'ENETUNREACH', 'EAI_AGAIN',
+    ]);
+
     process.on('uncaughtException', (error) => {
-      // Process state may be corrupt after an uncaught throw; log and shut down cleanly.
+      // A raw socket (RCON, SFTP, or anything else using an EventEmitter
+      // under the hood) emitting 'error' with no listener attached lands
+      // here as an "uncaught exception" even though it's really just a
+      // transient network blip isolated to that one connection -- it
+      // doesn't corrupt broader process state the way an arbitrary
+      // synchronous throw might. Treat known network error codes as
+      // recoverable instead of taking the whole bot down for them; this
+      // already happened once (a dropped RCON/SFTP connection to the
+      // Palworld server killed the entire bot for hours).
+      if (TRANSIENT_NETWORK_ERROR_CODES.has(error?.code)) {
+        logger.warn(`Recoverable network error (uncaught, no listener on the source socket): ${error.code} ${error.message}`);
+        return;
+      }
+
+      // Process state may be corrupt after any other uncaught throw; log and shut down cleanly.
       handleTaskError('uncaught_exception', error, { fatal: true });
       bot.shutdown('UNCAUGHT_EXCEPTION');
     });
