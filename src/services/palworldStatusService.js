@@ -10,6 +10,16 @@ export async function getOnlinePlayers(rconConfig) {
         timeout: 5000,
     });
 
+    // rcon-client re-emits socket errors (e.g. ECONNRESET after the RCON
+    // connection times out) as an 'error' event on the Rcon instance. With
+    // no listener attached, Node treats that as an uncaught exception and
+    // kills the whole process -- this is what actually took the bot down,
+    // not the caller's try/catch below (event-emitter errors aren't caught
+    // by a surrounding try/catch of an unrelated async call).
+    rcon.on('error', (error) => {
+        logger.warn(`RCON socket error (non-fatal): ${error.message}`);
+    });
+
     try {
         const response = await rcon.send('ShowPlayers');
         const lines = response.split('\n').map(l => l.trim()).filter(Boolean);
