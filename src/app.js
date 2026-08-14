@@ -19,6 +19,7 @@ import { refreshPalworldStatsCache } from './services/palworldStatsService.js';
 import { refreshLiveChannels } from './services/palworldLiveChannelService.js';
 import { sweepExpiredSupporterChannels } from './services/supporterChannelService.js';
 import { pollPalworldKills } from './services/palworldKillTrackerService.js';
+import { announceExpiredPolls } from './services/pollService.js';
 import crypto from 'crypto';
 
 class TitanBot extends Client {
@@ -338,6 +339,7 @@ class TitanBot extends Client {
     cron.schedule('*/2 * * * *', runSafeTask('palworld_live_channel', () => refreshLiveChannels(this)));
     runSafeTask('palworld_live_channel', () => refreshLiveChannels(this))();
     cron.schedule('*/5 * * * *', runSafeTask('supporter_channel_sweep', () => sweepExpiredSupporterChannels(this)));
+    cron.schedule('*/2 * * * *', runSafeTask('poll_results', () => announceExpiredPolls(this)));
   }
 
   async updateAllCounters() {
