@@ -23,12 +23,11 @@ export async function refreshPalworldStatsCache(client) {
         const data = JSON.parse(buf.toString('utf8'));
         const players = Array.isArray(data.players) ? data.players : [];
 
-        const top = players
+        const sorted = players
             .filter(p => p && typeof p.name === 'string' && typeof p.level === 'number')
-            .sort((a, b) => (b.level - a.level) || ((b.exp || 0) - (a.exp || 0)))
-            .slice(0, 10);
+            .sort((a, b) => (b.level - a.level) || ((b.exp || 0) - (a.exp || 0)));
 
-        await client.db.set(STATS_CACHE_KEY, { players: top, updatedAt: data.updatedAt || null }, null);
+        await client.db.set(STATS_CACHE_KEY, { players: sorted, updatedAt: data.updatedAt || null }, null);
     } catch (error) {
         logger.warn(`Failed to refresh Palworld stats cache: ${error.message}`);
     } finally {
@@ -36,6 +35,11 @@ export async function refreshPalworldStatsCache(client) {
     }
 }
 
-export async function getCachedPalworldLeaderboard(client) {
-    return client.db.get(STATS_CACHE_KEY, { players: [], updatedAt: null });
+// limit defaults to the old top-10 behavior so the two existing display
+// consumers (leaderboard button, live dashboard) are unaffected; pass a
+// larger/Infinity limit to read the full cached population (e.g. to match
+// currently-online players against their level for the bot's status text).
+export async function getCachedPalworldLeaderboard(client, limit = 10) {
+    const { players, updatedAt } = await client.db.get(STATS_CACHE_KEY, { players: [], updatedAt: null });
+    return { players: players.slice(0, limit), updatedAt };
 }

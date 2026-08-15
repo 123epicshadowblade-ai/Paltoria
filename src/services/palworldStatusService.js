@@ -1,6 +1,40 @@
 import { Rcon } from 'rcon-client';
 import { ActivityType } from 'discord.js';
 import { logger } from '../utils/logger.js';
+import { getCachedPalworldLeaderboard } from './palworldStatsService.js';
+
+const STATUS_MAX_LENGTH = 128;
+
+// Discord's custom-status "state" field caps at 128 chars. Rather than a
+// player count, this shows each online player's level (no names, per
+// request) -- trimmed with a "+N more" tail if the full list won't fit.
+function buildLevelsOnlyState(onlinePlayers, cachedPlayers) {
+    if (onlinePlayers.length === 0) return 'No players online';
+
+    const levelByName = new Map();
+    for (const p of cachedPlayers) {
+        if (typeof p.name === 'string' && typeof p.level === 'number') {
+            levelByName.set(p.name.toLowerCase(), p.level);
+        }
+    }
+
+    const levels = onlinePlayers
+        .map(p => levelByName.get((p.name || '').toLowerCase()))
+        .filter(level => typeof level === 'number')
+        .sort((a, b) => b - a);
+
+    if (levels.length === 0) return 'No players online';
+
+    const total = levels.length;
+    let shown = levels;
+    let state = `Levels: ${shown.join(', ')}`;
+    while (state.length > STATUS_MAX_LENGTH && shown.length > 0) {
+        shown = shown.slice(0, -1);
+        const hidden = total - shown.length;
+        state = `Levels: ${shown.join(', ')}${hidden > 0 ? ` +${hidden} more` : ''}`;
+    }
+    return state;
+}
 
 export async function getOnlinePlayers(rconConfig) {
     const rcon = await Rcon.connect({
@@ -89,9 +123,8 @@ export async function updatePalworldPresence(client) {
     try {
         const players = await getOnlinePlayers(rconConfig);
         await updatePlayerUidCache(client, players);
-        const count = players.length;
-        const max = rconConfig.maxPlayers;
-        const state = max ? `${count}/${max} players online` : `${count} players online`;
+        const { players: cachedPlayers } = await getCachedPalworldLeaderboard(client, Infinity);
+        const state = buildLevelsOnlyState(players, cachedPlayers);
 
         client.user.setPresence({
             status: 'online',
